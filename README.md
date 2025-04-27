@@ -109,7 +109,13 @@ transperency increases security and accountability.
 
 1. Build and push the Docker image (multi-platform):
 ```bash
-docker buildx build --platform linux/amd64,linux/arm64 -t ksiadz/temporal-worker:latest --push temporals/base
+# Multi-platform build with API key
+docker buildx build --platform linux/amd64,linux/arm64 \
+  --build-arg TEMPORAL_API_KEY=your-api-key \
+  -t ksiadz/temporal-worker:latest \
+  -f temporals/base/Dockerfile \
+  temporals/base/ \
+  --push
 ```
 
 Or for a specific platform:
@@ -120,6 +126,22 @@ docker buildx build --platform linux/amd64 -t ksiadz/temporal-worker:latest --pu
 2. Run the container locally:
 ```bash
 docker run -e TEMPORAL_API_KEY=your-api-key ksiadz/temporal-worker:latest
+```
+
+## Testing the API
+
+Send sample data using curl:
+```bash
+curl -X POST https://natsec.crowdwise.bio/submit_ship \
+  -H "Host: natsec.crowdwise.bio" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "source_account_id": "test123",
+    "timestamp": "2024-03-20T12:00:00Z",
+    "latitude": 37.7749,
+    "longitude": -122.4194,
+    "picture_url": "https://example.com/ship.jpg"
+  }'
 ```
 
 ## Kubernetes Deployment

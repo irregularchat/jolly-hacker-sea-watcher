@@ -10,6 +10,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Set environment variables
+ARG TEMPORAL_API_KEY
 ENV TEMPORAL_API_KEY=${TEMPORAL_API_KEY}
 ENV PYTHONUNBUFFERED=1
 
