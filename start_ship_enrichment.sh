@@ -52,23 +52,32 @@ check_temporal_cli() {
     echo -e "${GREEN}Found Temporal CLI.${NC}"
 }
 
-# Function to check if port is available
+# Function to check if port is available and by whom
 check_port_available() {
     local port=$1
+    local expected_process="$2" # Optional: expected process name (e.g., python, temporal)
     if command_exists lsof; then
-        if lsof -i:$port > /dev/null 2>&1; then
-            echo -e "${RED}Port $port is already in use.${NC}"
-            return 1
+        local lsof_output
+        lsof_output=$(lsof -i :$port -sTCP:LISTEN -Fp,c | head -n 2)
+        if [[ -n "$lsof_output" ]]; then
+            local pid=$(echo "$lsof_output" | grep '^p' | cut -c2-)
+            local command=$(echo "$lsof_output" | grep '^c' | cut -c2-)
+            if [[ -n "$expected_process" && "$command" == *"$expected_process"* ]]; then
+                echo -e "${YELLOW}Port $port is in use by expected process '$command' (PID $pid). Service may already be running. Skipping start.${NC}"
+                return 2
+            else
+                echo -e "${RED}Port $port is in use by another process ('$command', PID $pid). Skipping start of this service.${NC}"
+                return 3
+            fi
         fi
     elif command_exists netstat; then
-        if netstat -tuln | grep -q ":$port "; then
-            echo -e "${RED}Port $port is already in use.${NC}"
-            return 1
+        if netstat -tulnp 2>/dev/null | grep -q ":$port "; then
+            echo -e "${RED}Port $port is already in use. Skipping start of this service.${NC}"
+            return 3
         fi
     else
         echo -e "${YELLOW}Cannot check if port $port is available. Proceeding anyway.${NC}"
     fi
-    
     return 0
 }
 
@@ -100,23 +109,18 @@ setup_venv() {
 # Function to start Temporal server
 start_temporal_server() {
     echo -e "${BLUE}Starting Temporal server...${NC}"
-    
-    # Check if port is available
-    if ! check_port_available 7234; then
-        echo -e "${YELLOW}Temporal server might already be running.${NC}"
-        return
+    if check_port_available 7234 temporal; then
+        : # Port is free, continue
+    elif [[ $? -eq 2 ]]; then
+        return # Already running
+    else
+        return # Port conflict
     fi
-    
-    # Start Temporal server in background
     cd temporals
     temporal server start-dev --port 7234 > temporal_server.log 2>&1 &
     TEMPORAL_PID=$!
-    
-    # Wait for server to start
     echo -e "${BLUE}Waiting for Temporal server to start...${NC}"
     sleep 5
-    
-    # Check if server started successfully
     if kill -0 $TEMPORAL_PID 2>/dev/null; then
         echo -e "${GREEN}Temporal server started with PID $TEMPORAL_PID.${NC}"
         echo $TEMPORAL_PID > temporal_server.pid
@@ -124,25 +128,21 @@ start_temporal_server() {
         echo -e "${RED}Failed to start Temporal server. Check temporal_server.log for details.${NC}"
         exit 1
     fi
-    
     cd ..
 }
 
 # Function to start AIS mock server
 start_ais_mock_server() {
     echo -e "${BLUE}Starting AIS mock server...${NC}"
-    
-    # Check if port is available
-    if ! check_port_available 8000; then
-        echo -e "${YELLOW}AIS mock server might already be running.${NC}"
+    if check_port_available 8000 python; then
+        :
+    elif [[ $? -eq 2 ]]; then
+        return
+    else
         return
     fi
-    
-    # Set up virtual environment
     cd scripts/ais_mock
     setup_venv .
-    
-    # Download AIS data if it doesn't exist
     if [ ! -f "AIS_2024_05_05.csv" ]; then
         echo -e "${BLUE}Downloading AIS data...${NC}"
         if [ -f "dl_ais_data.sh" ]; then
@@ -151,17 +151,10 @@ start_ais_mock_server() {
             echo -e "${YELLOW}dl_ais_data.sh not found. Please download AIS data manually.${NC}"
         fi
     fi
-    
-    # Start AIS mock server in background
-    echo -e "${BLUE}Starting AIS mock server...${NC}"
     python main.py > ais_mock_server.log 2>&1 &
     AIS_MOCK_PID=$!
-    
-    # Wait for server to start
     echo -e "${BLUE}Waiting for AIS mock server to start...${NC}"
     sleep 5
-    
-    # Check if server started successfully
     if kill -0 $AIS_MOCK_PID 2>/dev/null; then
         echo -e "${GREEN}AIS mock server started with PID $AIS_MOCK_PID.${NC}"
         echo $AIS_MOCK_PID > ais_mock_server.pid
@@ -169,7 +162,6 @@ start_ais_mock_server() {
         echo -e "${RED}Failed to start AIS mock server. Check ais_mock_server.log for details.${NC}"
         exit 1
     fi
-    
     deactivate
     cd ../..
 }
@@ -207,14 +199,13 @@ start_temporal_worker() {
 # Function to start main server
 start_main_server() {
     echo -e "${BLUE}Starting main server...${NC}"
-    
-    # Check if port is available
-    if ! check_port_available 8001; then
-        echo -e "${YELLOW}Main server might already be running.${NC}"
+    if check_port_available 8001 python; then
+        :
+    elif [[ $? -eq 2 ]]; then
+        return
+    else
         return
     fi
-    
-    # Set up virtual environment
     cd temporals/base
     setup_venv .
     
@@ -324,12 +315,6 @@ main() {
     echo -e "  - Temporal Web UI:         http://localhost:8233"
     echo -e "  - AIS Mock Server (API):   http://localhost:8000"
     echo -e "  - Main Server (Web UI):    http://localhost:8001  ${GREEN}<-- Web UI${NC}"
-    
-    @app.get("/")
-    def root():
-        return {"status": "AIS mock server is running"}
-    {{ ... }}ocalhost:8001  ${GREEN}<-- Web UI${NC}"
-    echo -e "\n${YELLOW}Press Ctrl+C to stop all components.${NC}"
     
     # Keep script running until interrupted
     while true; do
