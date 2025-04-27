@@ -34,7 +34,7 @@ async def calculate_visibility(report: EnrichedReportDetails) -> int:
 async def find_ais_neighbours(report: EnrichedReportDetails) -> dict | list[dict] | list[str]:
     import requests
     logging.info(f"Fetching AIS data for ships around coordinates: {report.latitude}, {report.longitude}")
-    url = f"http://0.0.0.0:8000/ships?lat={report.latitude}&lon={report.longitude}&radius={report.visibility}&tail_hours=0.1&sim_window_minutes=120"
+    url = f"http://0.0.0.0:8000/ships?lat={report.latitude}&lon={report.longitude}&radius={report.visibility}&tail_hours=0.1&sim_window_minutes=60"
     logging.info(f"Making GET request to {url}")
     try:
         response = requests.request(
@@ -56,6 +56,7 @@ async def find_ais_neighbours(report: EnrichedReportDetails) -> dict | list[dict
         return ais_data
     except requests.exceptions.RequestException as e:
         activity.logger.error(f"HTTP request failed: {e}")
+        return []
         # Re-raise the exception so Temporal knows the activity failed
         raise e
 
@@ -95,14 +96,27 @@ async def llm_enrich(report: EnrichedReportDetails) -> str:
 
     Keep the analysis concise, professional, and focused on what can be confidently determined from the available data."""
     
-    neighbours = [ship["vessel_name"] for ship in report.ais_neighbours]
+
+    # Create structured text for each neighbor vessel
+    neighbors_text = []
+    for ship in report.ais_neighbours:
+        ship_info = (
+            f"Vessel: {ship['vessel_name']} (IMO: {ship['imo']})\n"
+            f"  Distance: {ship['distance_km']} km\n"
+            f"  Heading: {ship['heading']}°\n"
+            f"  Dimensions: {ship['length']}m x {ship['width']}m"
+        )
+        neighbors_text.append(ship_info)
     
+    neighbors_summary = "\n".join(neighbors_text) if neighbors_text else "None detected"
+
     user_message = f"""Please analyze and enrich this ship report:
     - Report Number: {report.report_number}
     - Location: {report.latitude}, {report.longitude} 
     - Visibility: {report.visibility} [nautical miles]
     - User Trust Score: {report.trust_score}
-    - Nearby Vessels: { ", ".join(neighbours) if neighbours else "None detected"}
+    - Nearby Vessels:
+    {neighbors_summary}
     
     Provide a detailed description incorporating all available information."""
 
