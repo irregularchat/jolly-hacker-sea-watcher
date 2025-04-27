@@ -14,6 +14,6 @@ class ReportDetails(BaseModel):
 class EnrichedReportDetails(ReportDetails):
     report_number: Optional[str] = None
     trust_score: Optional[float] = None
-    ais_neighbours: Optional[list[str]] = None
+    ais_neighbours: Optional[dict |list[dict] | list[str]] = None
     visibility: Optional[int] = 1
     enriched_description: Optional[str] = None

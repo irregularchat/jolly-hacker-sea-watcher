@@ -31,7 +31,7 @@ async def calculate_visibility(report: EnrichedReportDetails) -> int:
     return visibility
 
 @activity.defn
-async def find_ais_neighbours(report: EnrichedReportDetails) -> list[str]:
+async def find_ais_neighbours(report: EnrichedReportDetails) -> dict | list[dict] | list[str]:
     import requests
     logging.info(f"Fetching AIS data for ships around coordinates: {report.latitude}, {report.longitude}")
     url = f"http://0.0.0.0:8000/ships?lat={report.latitude}&lon={report.longitude}&radius={report.visibility}&tail_hours=0.1&sim_window_minutes=120"
@@ -47,14 +47,13 @@ async def find_ais_neighbours(report: EnrichedReportDetails) -> list[str]:
 
         # Handle cases where response might not have JSON body if needed
         ais_data = response.json()
-        neighbours = []
-        for ship in ais_data:
-            logging.info(f"{ship}")
-            neighbours.append(ship["vessel_name"])
+        neighbours = [ship["vessel_name"] for ship in ais_data]
+        
+        logging.info(f"AIS neighbours: {ais_data}")
 
         logging.info(f"Found ships around location at this time: {neighbours}")
-        return neighbours
 
+        return ais_data
     except requests.exceptions.RequestException as e:
         activity.logger.error(f"HTTP request failed: {e}")
         # Re-raise the exception so Temporal knows the activity failed
@@ -96,13 +95,14 @@ async def llm_enrich(report: EnrichedReportDetails) -> str:
 
     Keep the analysis concise, professional, and focused on what can be confidently determined from the available data."""
     
-
+    neighbours = [ship["vessel_name"] for ship in report.ais_neighbours]
+    
     user_message = f"""Please analyze and enrich this ship report:
     - Report Number: {report.report_number}
     - Location: {report.latitude}, {report.longitude} 
-    - Visibility: {report.visibility}/10
-    - Trust Score: {report.trust_score}
-    - Nearby Vessels: { ", ".join(report.ais_neighbours) if report.ais_neighbours else "None detected"}
+    - Visibility: {report.visibility} [nautical miles]
+    - User Trust Score: {report.trust_score}
+    - Nearby Vessels: { ", ".join(neighbours) if neighbours else "None detected"}
     
     Provide a detailed description incorporating all available information."""
 
@@ -230,21 +230,6 @@ async def _convert_to_prometheus_metrics(report_data) -> str:
             f'latitude="{latitude}",longitude="{longitude}",'
             f'stage="{stage}",enriched="true"}} 1'
         ])
-        if enriched_description:
-            metrics.append(
-                f'ship_description_length{{source_account_id="{source_account_id}",'
-                f'latitude="{latitude}",longitude="{longitude}",'
-                f'stage="{stage}",enriched="true"}} {len(enriched_description)}'
-            )
-            # Add a new metric for the LLM enrichment result
-            # We'll use a gauge type metric with a fixed value of 1 to indicate presence
-            # and include the enriched description as a label
-            metrics.append(
-                f'ship_llm_enrichment{{source_account_id="{source_account_id}",'
-                f'latitude="{latitude}",longitude="{longitude}",'
-                f'report_number="{report_number}",stage="{stage}",enriched="true",'
-                f'description="{enriched_description.replace('"', '\\"')}"}} 1'
-            )
     
     result = '\n'.join(metrics)
     logging.info(f"Generated Prometheus metrics: {result}")

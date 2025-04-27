@@ -48,7 +48,7 @@ class ReportDetailsWorkflow:
             start_to_close_timeout=timedelta(seconds=10),
             retry_policy=RETRY_POLICY,
         )
-        logging.info(f"Enriched with AIS number: {enriched.report_number}")
+        logging.info(f"Enriched with Report number: {enriched.report_number}")
 
         enriched.visibility = await workflow.execute_activity(
             calculate_visibility,
@@ -56,7 +56,7 @@ class ReportDetailsWorkflow:
             start_to_close_timeout=timedelta(seconds=10),
             retry_policy=RETRY_POLICY,
         )
-        logging.info(f"Enriched with neighbours: {enriched.ais_neighbours}")
+        logging.info(f"Enriched with weather visibility: {enriched.visibility}")
 
         enriched.ais_neighbours = await workflow.execute_activity(
             find_ais_neighbours,
@@ -64,7 +64,7 @@ class ReportDetailsWorkflow:
             start_to_close_timeout=timedelta(seconds=10),
             retry_policy=RETRY_POLICY,
         )
-        logging.info(f"Enriched with neighbours: {enriched.ais_neighbours}")
+        logging.info(f"Enriched with AIS neighbours: {len(enriched.ais_neighbours)}")
 
         enriched.trust_score = await workflow.execute_activity(
             calculate_trust_score,
@@ -75,19 +75,14 @@ class ReportDetailsWorkflow:
         logging.info(f"Trust score calculated: {enriched.trust_score}")
 
         logging.info("Starting LLM enrichment activity...")
-        try:
-            enriched.enriched_description = await workflow.execute_activity(
-                llm_enrich,
-                enriched,
-                start_to_close_timeout=timedelta(seconds=30),
-                retry_policy=RETRY_POLICY,
-            )
-            logging.info(f"Description enriched successfully: {enriched.enriched_description}")
-        except Exception as e:
-            logging.error(f"Failed to enrich description: {str(e)}")
-            # Set a default description to indicate the enrichment failed
-            enriched.enriched_description = "Description enrichment failed. Please check the logs for details."
-            logging.info("Set default description due to enrichment failure")
+        enriched.enriched_description = await workflow.execute_activity(
+            llm_enrich,
+            enriched,
+            start_to_close_timeout=timedelta(seconds=30),
+            retry_policy=RETRY_POLICY,
+        )
+        logging.info(f"Description enriched successfully: {enriched.enriched_description}")
+    
 
         # Store final metrics
         final_metric = await workflow.execute_activity(
