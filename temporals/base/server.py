@@ -7,6 +7,7 @@ import uuid
 import asyncio
 import uvicorn
 import logging
+from s3_service import s3_service
 
 from workflow import ReportDetailsWorkflow
 from shared import ReportDetails, EnrichedReportDetails
@@ -46,7 +47,16 @@ async def startup_event():
 @app.post("/submit_ship", response_model=EnrichedReportDetails)
 async def submit_ship(ship: ReportDetails):
     logger.info(f"Received ship: {ship}")
-    
+
+    # Handle base64 image upload to S3
+    if ship.picture_url and ship.picture_url.startswith("data:image/"):
+        s3_url = s3_service.upload_base64_image(ship.picture_url)
+        if s3_url:
+            logger.info(f"Uploaded image to S3: {s3_url}")
+            ship.picture_url = s3_url
+        else:
+            logger.warning("Failed to upload image to S3; using original base64 data.")
+
     # Store initial metrics
     initial_metric = await _convert_to_prometheus_metrics(ship)
     initial_metrics.append(initial_metric)
