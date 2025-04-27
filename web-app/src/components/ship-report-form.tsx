@@ -30,6 +30,7 @@ const VESSEL_HEADINGS = [
 ] as const;
 
 // Add vessel registry flags
+// This is a list of country flags and their names for a quick lookup
 const VESSEL_REGISTRY_FLAGS = [
   { code: '🇺🇸', nameKey: 'United States' },
   { code: '🇬🇧', nameKey: 'United Kingdom' },
@@ -80,6 +81,7 @@ export default function ShipReportForm({ user, onLogout, t }: ShipReportFormProp
   const [vesselHeading, setVesselHeading] = useState<string>('')
   const [vesselRegistry, setVesselRegistry] = useState<string>('')
   const [formError, setFormError] = useState<string | null>(null)
+  const [enrichedReport, setEnrichedReport] = useState<any>(null)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -205,7 +207,7 @@ export default function ShipReportForm({ user, onLogout, t }: ShipReportFormProp
       
       // Prepare the API payload according to the required structure
       const apiPayload = {
-        source_account_id: user?.id || "anonymous",
+        source_account_id: user?.id || "guest",
         timestamp: timestamp,
         latitude: location?.latitude,
         longitude: location?.longitude,
@@ -228,13 +230,19 @@ export default function ShipReportForm({ user, onLogout, t }: ShipReportFormProp
       });
 
       if (!response.ok) {
-        throw new Error(`API request failed with status ${response.status}`);
+        let errorMsg = t("failedToSubmitReport")
+        try {
+          const errData = await response.json()
+          if (errData.detail) errorMsg = errData.detail
+        } catch (e) {}
+        setFormError(errorMsg)
+        setIsSubmitting(false)
+        return
       }
 
       const data = await response.json();
       console.log("API response:", data);
-
-      // On success
+      setEnrichedReport(data)
       setIsSubmitting(false)
       setIsSuccess(true)
 
@@ -245,6 +253,7 @@ export default function ShipReportForm({ user, onLogout, t }: ShipReportFormProp
         setImagePreview(null)
         setVesselRegistry("")
         setIsSuccess(false)
+        setEnrichedReport(null)
       }, 3000)
     } catch (error) {
       console.error("Error submitting form:", error);
@@ -535,6 +544,26 @@ export default function ShipReportForm({ user, onLogout, t }: ShipReportFormProp
                 <h4 className="font-medium text-error">{t("error")}</h4>
               </div>
               <p className="text-sm mt-1 text-error">{formError}</p>
+            </div>
+          )}
+
+          {isSuccess && enrichedReport && (
+            <div className="mt-4 p-4 bg-green-100 border border-green-300 rounded">
+              <h3 className="font-bold mb-2">{t('reportSubmitted')}</h3>
+              <ul className="text-sm">
+                {enrichedReport.report_number && (
+                  <li><strong>{t('reportNumber')}:</strong> {enrichedReport.report_number}</li>
+                )}
+                {enrichedReport.trust_score !== undefined && (
+                  <li><strong>{t('trustScore')}:</strong> {enrichedReport.trust_score}</li>
+                )}
+                {enrichedReport.ais_neighbours && (
+                  <li><strong>{t('aisNeighbours')}:</strong> {enrichedReport.ais_neighbours.join(', ')}</li>
+                )}
+                {enrichedReport.visibility !== undefined && (
+                  <li><strong>{t('visibility')}:</strong> {enrichedReport.visibility}</li>
+                )}
+              </ul>
             </div>
           )}
 
