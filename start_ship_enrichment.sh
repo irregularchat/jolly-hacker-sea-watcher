@@ -58,7 +58,7 @@ check_port_available() {
     local expected_process="$2" # Optional: expected process name (e.g., python, temporal)
     if command_exists lsof; then
         local lsof_output
-        lsof_output=$(lsof -i :$port -sTCP:LISTEN -Fp,c | head -n 2)
+        lsof_output=$(lsof -i :$port -sTCP:LISTEN -Fpc | head -n 2)
         if [[ -n "$lsof_output" ]]; then
             local pid=$(echo "$lsof_output" | grep '^p' | cut -c2-)
             local command=$(echo "$lsof_output" | grep '^c' | cut -c2-)
