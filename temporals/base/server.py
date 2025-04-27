@@ -83,5 +83,9 @@ async def get_metrics():
     result += '\n'.join(initial_metrics + final_metrics)
     return result
 
+@app.get("/", response_class=PlainTextResponse)
+async def root():
+    return "Ship Enrichment API is running."
+
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8001)
