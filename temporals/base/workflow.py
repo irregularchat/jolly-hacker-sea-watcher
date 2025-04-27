@@ -10,7 +10,7 @@ from activities import (
     calculate_trust_score, 
     assign_report_number, 
     calculate_visibility, 
-    find_ais_neighbours, 
+    # find_ais_neighbours,
     convert_to_prometheus_metrics,
     llm_enrich
 )
@@ -59,7 +59,7 @@ class ReportDetailsWorkflow:
         logging.info(f"Enriched with neighbours: {enriched.ais_neighbours}")
 
         enriched.ais_neighbours = await workflow.execute_activity(
-            find_ais_neighbours,
+            # find_ais_neighbours,
             enriched,
             start_to_close_timeout=timedelta(seconds=10),
             retry_policy=RETRY_POLICY,

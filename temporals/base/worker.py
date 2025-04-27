@@ -4,7 +4,8 @@ from temporalio.client import Client
 import os
 from dotenv import load_dotenv
 
-from activities import assign_report_number, calculate_trust_score, calculate_visibility, find_ais_neighbours, convert_to_prometheus_metrics, llm_enrich
+from activities import (assign_report_number, calculate_trust_score, calculate_visibility, convert_to_prometheus_metrics, llm_enrich)
+                        # find_ais_neighbours,
 from workflow import ReportDetailsWorkflow
 
 # Load environment variables from .env file
@@ -50,11 +51,13 @@ async def run_worker():
         client,
         task_queue="ship-processing",
         workflows=[ReportDetailsWorkflow],
-        activities=[assign_report_number, calculate_trust_score, calculate_visibility, find_ais_neighbours, convert_to_prometheus_metrics, llm_enrich],
+        activities=[assign_report_number, calculate_trust_score, calculate_visibility, convert_to_prometheus_metrics, llm_enrich],
+        # find_ais_neighbours,
     )
 
     logger.info("Worker started, waiting for tasks...")
-    logging.info(f"Registered activities: {[fn.__name__ for fn in [assign_report_number, calculate_trust_score, calculate_visibility, find_ais_neighbours, convert_to_prometheus_metrics, llm_enrich]]}")
+    logging.info(f"Registered activities: {[fn.__name__ for fn in [assign_report_number, calculate_trust_score, calculate_visibility, convert_to_prometheus_metrics, llm_enrich]]}")
+    # find_ais_neighbours
     await worker.run()
 
 if __name__ == "__main__":

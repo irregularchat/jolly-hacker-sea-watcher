@@ -51,22 +51,22 @@ class TestActivities(unittest.IsolatedAsyncioTestCase):
             result = await activities.calculate_visibility(report)
             self.assertEqual(result, 8)
 
-    async def test_find_ais_neighbours_success(self):
-        # Patch requests.request to simulate API call
-        fake_response = MagicMock()
-        fake_response.raise_for_status = MagicMock()
-        fake_response.json.return_value = [{"vessel_name": "ShipA"}, {"vessel_name": "ShipB"}]
-        with patch('requests.request', return_value=fake_response):
-            report = EnrichedReportDetails(latitude=0, longitude=0, visibility=10)
-            result = await activities.find_ais_neighbours(report)
-            self.assertEqual(result, ["ShipA", "ShipB"])
+    # async def test_find_ais_neighbours_success(self):
+    #     # Patch requests.request to simulate API call
+    #     fake_response = MagicMock()
+    #     fake_response.raise_for_status = MagicMock()
+    #     fake_response.json.return_value = [{"vessel_name": "ShipA"}, {"vessel_name": "ShipB"}]
+    #     with patch('requests.request', return_value=fake_response):
+    #         report = EnrichedReportDetails(latitude=0, longitude=0, visibility=10)
+    #         result = await activities.find_ais_neighbours(report)
+    #         self.assertEqual(result, ["ShipA", "ShipB"])
 
-    async def test_find_ais_neighbours_http_error(self):
-        # Patch requests.request to raise an exception
-        with patch('requests.request', side_effect=Exception("fail")):
-            report = EnrichedReportDetails(latitude=0, longitude=0, visibility=10)
-            with self.assertRaises(Exception):
-                await activities.find_ais_neighbours(report)
+    # async def test_find_ais_neighbours_http_error(self):
+    #     # Patch requests.request to raise an exception
+    #     with patch('requests.request', side_effect=Exception("fail")):
+    #         report = EnrichedReportDetails(latitude=0, longitude=0, visibility=10)
+    #         with self.assertRaises(Exception):
+    #             await activities.find_ais_neighbours(report)
 
     async def test_convert_to_prometheus_metrics(self):
         # Patch _convert_to_prometheus_metrics to return a known value

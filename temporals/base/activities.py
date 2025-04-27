@@ -71,39 +71,39 @@ async def calculate_visibility(report: EnrichedReportDetails) -> int:
         logging.error(f"Exception in calculate_visibility: {e}")
         raise
 
-@activity.defn
-async def find_ais_neighbours(report: EnrichedReportDetails) -> list[str]:
-    try:
-        import requests
-        logging.info(f"Fetching AIS data for ships around coordinates: {report.latitude}, {report.longitude}")
-        url = f"http://0.0.0.0:8000/ships?lat={report.latitude}&lon={report.longitude}&radius={report.visibility}&tail_hours=0.1&sim_window_minutes=120"
-        logging.info(f"Making GET request to {url}")
-        try:
-            response = requests.request(
-                method="GET",
-                url=url,
-                timeout=15 # Example timeout for the request itself
-            )
-            # Raise an exception for bad status codes (4xx or 5xx)
-            response.raise_for_status()
-
-            # Handle cases where response might not have JSON body if needed
-            ais_data = response.json()
-            neighbours = []
-            for ship in ais_data:
-                logging.info(f"{ship}")
-                neighbours.append(ship["vessel_name"])
-
-            logging.info(f"Found ships around location at this time: {neighbours}")
-            return neighbours
-
-        except requests.exceptions.RequestException as e:
-            activity.logger.error(f"HTTP request failed: {e}")
-            # Re-raise the exception so Temporal knows the activity failed
-            raise e
-    except Exception as e:
-        logging.error(f"Exception in find_ais_neighbours: {e}")
-        raise
+# @activity.defn
+# async def find_ais_neighbours(report: EnrichedReportDetails) -> list[str]:
+#     try:
+#         import requests
+#         logging.info(f"Fetching AIS data for ships around coordinates: {report.latitude}, {report.longitude}")
+#         url = f"http://0.0.0.0:8000/ships?lat={report.latitude}&lon={report.longitude}&radius={report.visibility}&tail_hours=0.1&sim_window_minutes=120"
+#         logging.info(f"Making GET request to {url}")
+#         try:
+#             response = requests.request(
+#                 method="GET",
+#                 url=url,
+#                 timeout=15 # Example timeout for the request itself
+#             )
+#             # Raise an exception for bad status codes (4xx or 5xx)
+#             response.raise_for_status()
+#
+#             # Handle cases where response might not have JSON body if needed
+#             ais_data = response.json()
+#             neighbours = []
+#             for ship in ais_data:
+#                 logging.info(f"{ship}")
+#                 neighbours.append(ship["vessel_name"])
+#
+#             logging.info(f"Found ships around location at this time: {neighbours}")
+#             return neighbours
+#
+#         except requests.exceptions.RequestException as e:
+#             activity.logger.error(f"HTTP request failed: {e}")
+#             # Re-raise the exception so Temporal knows the activity failed
+#             raise e
+#     except Exception as e:
+#         logging.error(f"Exception in find_ais_neighbours: {e}")
+#         raise
 
 @activity.defn
 async def llm_enrich(report: EnrichedReportDetails) -> str:
@@ -274,6 +274,14 @@ async def _convert_to_prometheus_metrics(report_data) -> str:
     
     # Build metrics with stage label
     metrics = []
+    
+    # Add numeric coordinates metrics
+    metrics.extend([
+        f'ship_latitude{{source_account_id="{source_account_id}",'
+        f'stage="{stage}",timestamp="{timestamp}"}} {latitude}',
+        f'ship_longitude{{source_account_id="{source_account_id}",'
+        f'stage="{stage}",timestamp="{timestamp}"}} {longitude}'
+    ])
     
     # For initial metrics, we only have basic ship info
     if not is_final:
