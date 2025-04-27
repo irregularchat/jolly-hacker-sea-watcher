@@ -1,0 +1,17 @@
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: temporal-worker
+  namespace: flux-system
+spec:
+  interval: 5m
+  path: ./manifests
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: jolly-hacker-sea-watcher
+  healthChecks:
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: temporal-worker
+      namespace: temporal 

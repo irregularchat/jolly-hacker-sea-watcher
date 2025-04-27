@@ -1,0 +1,32 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: temporal-server
+  namespace: temporal
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod-cloudflare
+    kubernetes.io/ingress.class: nginx
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: natsec.crowdwise.bio
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: temporal-server
+            port:
+              number: 80
+      - path: /metrics
+        pathType: Prefix
+        backend:
+          service:
+            name: temporal-server
+            port:
+              number: 80
+  tls:
+  - hosts:
+    - natsec.crowdwise.bio
+    secretName: temporal-server-tls 

@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: temporal-server
+  namespace: temporal
+  labels:
+    app: temporal-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: temporal-server
+  template:
+    metadata:
+      labels:
+        app: temporal-server
+    spec:
+      containers:
+      - name: temporal-server
+        image: ksiadz/temporal-worker:latest
+        imagePullPolicy: Always
+        command: ["python3", "server.py"]
+        env:
+        - name: TEMPORAL_ENDPOINT
+          value: "us-west-2.aws.api.temporal.io:7233"
+        - name: TEMPORAL_NAMESPACE
+          value: "national-hackathon.v37zq"
+        envFrom:
+        - secretRef:
+            name: temporal-worker-secrets
+        ports:
+        - containerPort: 8001
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+        livenessProbe:
+          httpGet:
+            path: /metrics
+            port: 8001
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /metrics
+            port: 8001
+          initialDelaySeconds: 5
+          periodSeconds: 10 
