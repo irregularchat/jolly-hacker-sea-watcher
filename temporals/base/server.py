@@ -1,11 +1,12 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import PlainTextResponse, JSONResponse
 from temporalio.client import Client
 import uuid
 import asyncio
 import uvicorn
 import logging
+import os
 
 from workflow import ReportDetailsWorkflow
 from shared import ReportDetails, EnrichedReportDetails
@@ -14,7 +15,11 @@ from activities import _convert_to_prometheus_metrics
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI()
+app = FastAPI(
+    title="Temporal Ship Processing API",
+    description="API for processing ship reports using Temporal workflows",
+    version="1.0.0"
+)
 
 class ReportDetailsRequest(BaseModel):
     source_account_id: str
@@ -27,10 +32,37 @@ temporal_client = None
 initial_metrics = []
 final_metrics = []
 
+@app.get("/")
+async def root():
+    return JSONResponse({
+        "name": "Temporal Ship Processing API",
+        "version": "1.0.0",
+        "endpoints": {
+            "/submit_ship": "POST endpoint for submitting ship reports",
+            "/metrics": "GET endpoint for Prometheus metrics"
+        }
+    })
+
 @app.on_event("startup")
 async def startup_event():
     global temporal_client
-    temporal_client = await Client.connect("127.0.0.1:7234")
+    api_key = os.getenv('TEMPORAL_API_KEY')
+    endpoint = os.getenv('TEMPORAL_ENDPOINT', '127.0.0.1:7234')
+    namespace = os.getenv('TEMPORAL_NAMESPACE', 'default')
+    
+    logger.info(f"Connecting to Temporal server at {endpoint}...")
+    if api_key:
+        logger.info("Using cloud Temporal endpoint")
+        temporal_client = await Client.connect(
+            endpoint,
+            tls=True,
+            api_key=api_key,
+            namespace=namespace
+        )
+    else:
+        logger.info("Using local Temporal endpoint")
+        temporal_client = await Client.connect(endpoint)
+    logger.info("Connected to Temporal server")
 
 
 @app.post("/submit_ship", response_model=EnrichedReportDetails)

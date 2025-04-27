@@ -105,3 +105,44 @@ transperency increases security and accountability.
 - Shared intelligence and collaboration capabilities
 - Enhanced situational awareness for joint maritime operations
 
+## Docker Deployment
+
+1. Build and push the Docker image (multi-platform):
+```bash
+docker buildx build --platform linux/amd64,linux/arm64 -t ksiadz/temporal-worker:latest --push temporals/base
+```
+
+Or for a specific platform:
+```bash
+docker buildx build --platform linux/amd64 -t ksiadz/temporal-worker:latest --push temporals/base
+```
+
+2. Run the container locally:
+```bash
+docker run -e TEMPORAL_API_KEY=your-api-key ksiadz/temporal-worker:latest
+```
+
+## Kubernetes Deployment
+
+### Manual Deployment
+
+1. Create the temporal namespace:
+```bash
+kubectl apply -f manifests/namespace.yaml
+```
+
+2. Create the secret with your API key:
+```bash
+kubectl create secret generic temporal-worker-secrets \
+  --namespace temporal \
+  --from-literal=TEMPORAL_API_KEY=your-api-key \
+  --dry-run=client -o yaml | kubectl apply -f -
+```
+
+3. Apply all manifests:
+```bash
+kubectl apply -k manifests/
+```
+
+### GitOps Deployment (Flux/ArgoCD)
+

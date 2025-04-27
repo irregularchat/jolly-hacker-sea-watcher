@@ -24,6 +24,12 @@ spec:
             name: temporal-worker-config
         - secretRef:
             name: temporal-worker-secrets
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          echo "Environment variables:"
+          env | grep TEMPORAL
+          python3 worker.py
         resources:
           requests:
             cpu: "100m"
