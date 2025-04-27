@@ -6,6 +6,7 @@ import uuid
 import asyncio
 import uvicorn
 import logging
+from fastapi.middleware.cors import CORSMiddleware
 
 from workflow import ReportDetailsWorkflow
 from shared import ReportDetails, EnrichedReportDetails
@@ -15,6 +16,15 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # You can restrict this in production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 class ReportDetailsRequest(BaseModel):
     source_account_id: str
