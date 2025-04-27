@@ -47,15 +47,19 @@ async def startup_event():
 @app.post("/submit_ship", response_model=EnrichedReportDetails)
 async def submit_ship(ship: ReportDetails):
     logger.info(f"Received ship: {ship}")
+    logger.info(f"Received picture_url: {getattr(ship, 'picture_url', None)}")
 
     # Handle base64 image upload to S3
     if ship.picture_url and ship.picture_url.startswith("data:image/"):
+        logger.info("picture_url starts with data:image/, attempting upload to S3...")
         s3_url = s3_service.upload_base64_image(ship.picture_url)
         if s3_url:
             logger.info(f"Uploaded image to S3: {s3_url}")
             ship.picture_url = s3_url
         else:
             logger.warning("Failed to upload image to S3; using original base64 data.")
+    else:
+        logger.info("picture_url is missing or does not start with data:image/, skipping S3 upload.")
 
     # Store initial metrics
     initial_metric = await _convert_to_prometheus_metrics(ship)

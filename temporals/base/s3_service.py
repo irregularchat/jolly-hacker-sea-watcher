@@ -9,6 +9,8 @@ from botocore.exceptions import BotoCoreError, ClientError
 
 logger = logging.getLogger("s3_service")
 
+logger.info("[S3Service] Module imported and ready")
+
 class S3Service:
     def __init__(self):
         self.s3 = boto3.client(
@@ -22,12 +24,16 @@ class S3Service:
             raise ValueError("S3_BUCKET_NAME environment variable not set.")
 
     def upload_base64_image(self, base64_data: str, prefix: str = "maritime-images/") -> Optional[str]:
+        logger.info(f"[S3Service] Called upload_base64_image with prefix={prefix} and data header={base64_data[:30]}")
+        raise RuntimeError("[S3Service] Forced error for log visibility test!")
         try:
             header, encoded = base64_data.split(",", 1) if "," in base64_data else (None, base64_data)
             image_bytes = base64.b64decode(encoded)
             ext = self._get_extension(header)
             key = f"{prefix}{uuid.uuid4()}{ext}"
-            self.s3.put_object(Bucket=self.bucket, Key=key, Body=image_bytes, ACL="public-read", ContentType=self._get_content_type(header))
+            logger.info(f"[S3Service] Attempting to upload to bucket={self.bucket}, key={key}, content_type={self._get_content_type(header)}")
+            resp = self.s3.put_object(Bucket=self.bucket, Key=key, Body=image_bytes, ContentType=self._get_content_type(header))
+            logger.info(f"[S3Service] put_object response: {resp}")
             url = f"https://{self.bucket}.s3.{self.s3.meta.region_name}.amazonaws.com/{key}"
             logger.info(f"Image uploaded to S3: {url}")
             return url

@@ -233,7 +233,17 @@ export default function ShipReportForm({ user, onLogout, t }: ShipReportFormProp
         let errorMsg = t("failedToSubmitReport")
         try {
           const errData = await response.json()
-          if (errData.detail) errorMsg = errData.detail
+          if (errData.detail) {
+            if (typeof errData.detail === 'string') {
+              errorMsg = errData.detail
+            } else if (Array.isArray(errData.detail)) {
+              // If detail is an array of error objects, join their messages
+              errorMsg = errData.detail.map((d: any) => d.msg || JSON.stringify(d)).join("; ")
+            } else if (typeof errData.detail === 'object') {
+              // If detail is an object, try to extract msg or stringify
+              errorMsg = errData.detail.msg || JSON.stringify(errData.detail)
+            }
+          }
         } catch (e) {}
         setFormError(errorMsg)
         setIsSubmitting(false)
